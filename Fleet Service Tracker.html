@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Fleet Service Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #171b24;
+    --surface2: #1e2330;
+    --border: #2a3045;
+    --border2: #3a4560;
+    --text: #e8ecf4;
+    --text2: #8a94aa;
+    --text3: #555f78;
+    --accent: #4f8ef7;
+    --accent-dim: #1a2d52;
+    --green: #2dd4a0;
+    --green-dim: #0d2e23;
+    --red: #f75f5f;
+    --red-dim: #2e1010;
+    --amber: #f7b74f;
+    --amber-dim: #2e2010;
+    --purple: #a78bfa;
+    --purple-dim: #1e1535;
+    --font: 'IBM Plex Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--surface);
+  }
+
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .logo svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  header h1 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+  header p { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+
+  .sync-dot {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text2); font-family: var(--mono);
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .dot.loading { background: var(--amber); animation: pulse 1s ease-in-out infinite; }
+  .dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  .grid { display: grid; grid-template-columns: 360px 1fr; gap: 1.5rem; align-items: start; }
+
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; }
+    main { padding: 1rem; }
+    header { padding: 1rem; }
+    header h1 { font-size: 15px; }
+    .sync-dot span { display: none; }
+    .panel-header { font-size: 12px; }
+    table { font-size: 12px; }
+    th, td { padding: 8px; }
+    .field-row { grid-template-columns: 1fr; }
+    input[type="text"], input[type="date"], input[type="number"], select, textarea {
+      font-size: 16px; /* prevents iOS zoom on focus */
+    }
+    .btn { font-size: 15px; padding: 12px; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--mono);
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .panel-header svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .panel-body { padding: 1.25rem; }
+
+  .field { margin-bottom: 1rem; }
+  .field:last-of-type { margin-bottom: 0; }
+  label { display: block; font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  input[type="text"], input[type="date"], select, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    padding: 9px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="text"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a94aa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 32px;
+  }
+
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 80px; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .btn {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 1.25rem;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-accent { background: var(--accent); color: #fff; }
+  .btn-accent:hover:not(:disabled) { opacity: 0.88; }
+
+  .form-msg {
+    margin-top: 10px;
+    font-size: 12px;
+    font-family: var(--mono);
+    min-height: 18px;
+    text-align: center;
+  }
+  .form-msg.ok { color: var(--green); }
+  .form-msg.err { color: var(--red); }
+
+  .filters {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .filters input, .filters select { flex: 1; min-width: 160px; }
+
+  .table-wrap { overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; font-family: var(--mono);
+    color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .vehicle-name { font-weight: 500; color: var(--text); }
+  .vehicle-type { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+
+  .badge {
+    display: inline-block; font-size: 11px; font-family: var(--mono);
+    padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+  }
+  .b-oil    { background: var(--amber-dim); color: var(--amber); border: 1px solid #3a2a10; }
+  .b-tire   { background: var(--accent-dim); color: var(--accent); border: 1px solid #1e3060; }
+  .b-brake  { background: var(--red-dim); color: var(--red); border: 1px solid #3a1515; }
+  .b-inspect{ background: var(--green-dim); color: var(--green); border: 1px solid #0f3020; }
+  .b-filter { background: var(--purple-dim); color: var(--purple); border: 1px solid #2a1d50; }
+  .b-fluid  { background: #1a2030; color: #6ab4f7; border: 1px solid #1e3050; }
+  .b-other  { background: #1a1d25; color: var(--text2); border: 1px solid var(--border); }
+
+  .date-main { font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .date-next { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .notes-cell { font-size: 13px; color: var(--text2); max-width: 220px; }
+  .tech-label { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 2px; }
+
+  .del-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); padding: 4px 8px; border-radius: 4px;
+    font-size: 16px; line-height: 1; transition: color 0.15s, background 0.15s;
+  }
+  .del-btn:hover { color: var(--red); background: var(--red-dim); }
+
+  .empty-state {
+    padding: 3rem 1.5rem; text-align: center;
+    color: var(--text3); font-family: var(--mono); font-size: 13px;
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
+
+  .status-row {
+    padding: 10px 1.25rem;
+    font-size: 12px; font-family: var(--mono); color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .spinner {
+    width: 12px; height: 12px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="lockScreen" style="
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; align-items:center; justify-content:center;
+  z-index:9999; flex-direction:column; gap:1rem;
+">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:2rem; width:320px; text-align:center;">
+    <div style="font-size:28px; margin-bottom:1rem;">🔒</div>
+    <h2 style="font-size:17px; font-weight:600; margin-bottom:6px;">Fleet Service Tracker</h2>
+    <p style="font-size:13px; color:var(--text2); margin-bottom:1.5rem; font-family:var(--mono);">Enter password to continue</p>
+    <input type="password" id="pwInput" placeholder="Password" onkeydown="if(event.key==='Enter')checkPw()" style="width:100%; margin-bottom:12px;" />
+    <button onclick="checkPw()" style="width:100%; padding:10px; background:var(--accent); color:#fff; border:none; border-radius:var(--radius); font-family:var(--font); font-size:14px; font-weight:500; cursor:pointer;">Unlock</button>
+    <p id="pwErr" style="font-size:12px; color:var(--red); margin-top:10px; min-height:16px; font-family:var(--mono);"></p>
+  </div>
+</div>
+
+<script>
+  const PASS = "635Halstead";
+  function checkPw() {
+    const val = document.getElementById('pwInput').value;
+    if (val === PASS) {
+      document.getElementById('lockScreen').style.display = 'none';
+      localStorage.setItem('fst_auth', PASS);
+    } else {
+      document.getElementById('pwErr').textContent = 'incorrect password';
+      document.getElementById('pwInput').value = '';
+    }
+  }
+  if (localStorage.getItem('fst_auth') === PASS) {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('lockScreen').style.display = 'none';
+    });
+  }
+</script>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+  </div>
+  <div>
+    <h1>Fleet Service Tracker</h1>
+    <p>google sheets sync</p>
+  </div>
+  <div class="sync-dot">
+    <div class="dot loading" id="syncDot"></div>
+    <span id="syncLabel">connecting...</span>
+  </div>
+</header>
+
+<main>
+  <div class="grid">
+
+    <!-- Add Form -->
+    <div class="panel">
+      <div class="panel-header">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New service record
+      </div>
+      <div class="panel-body">
+        <div class="field">
+          <label>Vehicle / machine name *</label>
+          <input type="text" id="vName" placeholder="Or type a custom name..." />
+        </div>
+        <div class="field">
+          <label>Vehicle type</label>
+          <select id="vType">
+            <option value="">Select type</option>
+            <option>Dump Truck</option>
+            <option>Box Truck</option>
+            <option>Pickup Truck</option>
+            <option>SUV / Sedan</option>
+            <option>Excavator</option>
+            <option>Machine</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field" id="vehicleNameField" style="display:none">
+          <label>Vehicle name</label>
+          <select id="vName2">
+            <option value="">Select vehicle</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Service type *</label>
+          <select id="sType">
+            <option value="">Select service</option>
+            <option>Oil change</option>
+            <option>Tire rotation / replacement</option>
+            <option>Brake service</option>
+            <option>Inspection</option>
+            <option>Filter replacement</option>
+            <option>Fluid top-off</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Service date *</label>
+          <input type="date" id="sDate" />
+        </div>
+        <div class="field" id="mileageFields" style="display:none">
+          <div class="field-row">
+            <div>
+              <label>Current mileage</label>
+              <input type="number" id="curMileage" placeholder="e.g. 45000" min="0" style="width:100%" />
+            </div>
+            <div>
+              <label>Next due mileage</label>
+              <input type="number" id="nextMileage" placeholder="e.g. 55000" min="0" style="width:100%" />
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Next service date (optional)</label>
+          <input type="date" id="nextDate" />
+        </div>
+        <div class="field">
+          <label>Technician</label>
+          <input type="text" id="tech" placeholder="Name or shop" />
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <textarea id="notes" placeholder="Parts used, anything relevant..."></textarea>
+        </div>
+        <button class="btn btn-accent" id="saveBtn" onclick="addRecord()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save record
+        </button>
+        <div class="form-msg" id="formMsg"></div>
+      </div>
+    </div>
+
+    <!-- Records Table -->
+    <div class="panel">
+      <div class="panel-header">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Service history
+      </div>
+      <div class="filters">
+        <input type="text" id="filterName" placeholder="Search by name..." oninput="renderTable()" />
+        <select id="filterService" onchange="renderTable()">
+          <option value="">All service types</option>
+          <option>Oil change</option>
+          <option>Tire rotation / replacement</option>
+          <option>Brake service</option>
+          <option>Inspection</option>
+          <option>Filter replacement</option>
+          <option>Fluid top-off</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="status-row" id="statusRow"><span class="spinner"></span> Loading records...</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Vehicle</th>
+              <th>Date</th>
+              <th>Service</th>
+              <th>Notes</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="recordsBody">
+            <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div>Loading...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  const API = "https://script.google.com/macros/s/AKfycbxmfvBoMQNhJ1SKnKdw62TAo_CsSUt5i76QOvRcQAVPuQfVMsOYUqAWEifujlRF1e8/exec";
+  let records = [];
+
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function badgeClass(s) {
+    const map = {
+      'Oil change':'b-oil','Tire rotation / replacement':'b-tire',
+      'Brake service':'b-brake','Inspection':'b-inspect',
+      'Filter replacement':'b-filter','Fluid top-off':'b-fluid'
+    };
+    return map[s] || 'b-other';
+  }
+
+  function setSyncStatus(state) {
+    const dot = document.getElementById('syncDot');
+    const label = document.getElementById('syncLabel');
+    dot.className = 'dot' + (state === 'ok' ? '' : state === 'loading' ? ' loading' : ' error');
+    label.textContent = state === 'ok' ? 'synced' : state === 'loading' ? 'syncing...' : 'offline';
+  }
+
+  function loadRecords() {
+    setSyncStatus('loading');
+    return new Promise((resolve) => {
+      const cbName = '_cb_' + Date.now();
+      const script = document.createElement('script');
+      const timeout = setTimeout(() => {
+        setSyncStatus('error');
+        document.getElementById('statusRow').innerHTML = '⚠ Could not connect to Google Sheets.';
+        document.getElementById('recordsBody').innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="icon">📡</div>Connection failed. Check your internet.</div></td></tr>';
+        delete window[cbName];
+        script.remove();
+        resolve();
+      }, 10000);
+      window[cbName] = function(data) {
+        clearTimeout(timeout);
+        records = data.reverse();
+        setSyncStatus('ok');
+        renderTable();
+        delete window[cbName];
+        script.remove();
+        resolve();
+      };
+      script.src = API + "?action=getAll&callback=" + cbName;
+      document.head.appendChild(script);
+    });
+  }
+
+  const VEHICLE_MAP = {
+    'Dump Truck': ['Mitsubishi Fuso FH','International','Chevy Silverado 3500 HD','Ford F-550 Silver','Ford F-550 Black'],
+    'Box Truck': ['Mitsubishi FE','Isuzu MPR 1','Isuzu MPR 2'],
+    'Pickup Truck': ['F-250 Super Duty','GMC Sierra 3500','Chevy Silverado 1500','Chevy Silverado 1500 LT','Ford F-150 Raptor'],
+    'SUV / Sedan': ['Ford Bronco','BMW M5','Jeep Grand Cherokee','Honda HRV','Hyundai Tucson'],
+    'Excavator': ['Kubota KX040 - 4','Bobcat 331GB'],
+    'Machine': ['Bobcat S530','Bobcat T595','Bobcat MT100','Bobcat S70']
+  };
+
+  const MILEAGE_TYPES = ['Oil change','Tire rotation / replacement','Filter replacement','Fluid top-off'];
+
+  document.getElementById('vType').addEventListener('change', function() {
+    const type = this.value;
+    const nameField = document.getElementById('vehicleNameField');
+    const select = document.getElementById('vName2');
+    if (VEHICLE_MAP[type]) {
+      nameField.style.display = 'block';
+      select.innerHTML = '<option value="">Select vehicle</option>' +
+        VEHICLE_MAP[type].map(v => `<option>${v}</option>`).join('');
+      // sync selection to vName input
+      select.onchange = function() {
+        if (this.value) document.getElementById('vName').value = this.value;
+      };
+    } else {
+      nameField.style.display = 'none';
+      select.innerHTML = '<option value="">Select vehicle</option>';
+      document.getElementById('vName').value = '';
+    }
+  });
+
+  document.getElementById('sType').addEventListener('change', function() {
+    const show = MILEAGE_TYPES.includes(this.value);
+    document.getElementById('mileageFields').style.display = show ? 'block' : 'none';
+    if (!show) {
+      document.getElementById('curMileage').value = '';
+      document.getElementById('nextMileage').value = '';
+    }
+  });
+
+  async function addRecord() {
+    const name = document.getElementById('vName').value.trim();
+    const vType = document.getElementById('vType').value;
+    const sType = document.getElementById('sType').value;
+    const sDate = document.getElementById('sDate').value;
+    const nextDate = document.getElementById('nextDate').value;
+    const curMileage = document.getElementById('curMileage').value;
+    const nextMileage = document.getElementById('nextMileage').value;
+    const tech = document.getElementById('tech').value.trim();
+    const notes = document.getElementById('notes').value.trim();
+    const msg = document.getElementById('formMsg');
+    const btn = document.getElementById('saveBtn');
+
+    if (!name || !sType || !sDate) {
+      msg.className = 'form-msg err';
+      msg.textContent = 'name, service type, and date required';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> saving...';
+    msg.className = 'form-msg';
+    msg.textContent = '';
+    setSyncStatus('loading');
+
+    const rec = { id: Date.now(), name, vType, sType, sDate, curMileage, nextMileage, nextDate, tech, notes };
+
+    try {
+      await fetch(API + "?action=add&data=" + encodeURIComponent(JSON.stringify(rec)), { mode: 'no-cors' });
+      records.unshift(rec);
+      renderTable();
+      clearForm();
+      msg.className = 'form-msg ok';
+      msg.textContent = '✓ saved to google sheets';
+      setTimeout(() => msg.textContent = '', 3000);
+      setSyncStatus('ok');
+    } catch(e) {
+      msg.className = 'form-msg err';
+      msg.textContent = 'failed to save — check connection';
+      setSyncStatus('error');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save record';
+  }
+
+  async function deleteRecord(id) {
+    if (!confirm('Delete this record?')) return;
+    records = records.filter(r => String(r.id||r.ID) !== String(id));
+    renderTable();
+    setSyncStatus('loading');
+    try {
+      await fetch(API + "?action=delete&id=" + id, { mode: 'no-cors' });
+      setSyncStatus('ok');
+    } catch(e) {
+      setSyncStatus('error');
+      loadRecords();
+    }
+  }
+
+  function clearForm() {
+    ['vName','vType','sType','sDate','curMileage','nextMileage','nextDate','tech','notes'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mileageFields').style.display = 'none';
+    document.getElementById('vehicleNameField').style.display = 'none';
+    document.getElementById('vName2').innerHTML = '<option value="">Select vehicle</option>';
+  }
+
+  function renderTable() {
+    const fn = document.getElementById('filterName').value.toLowerCase();
+    const fs = document.getElementById('filterService').value;
+    const tbody = document.getElementById('recordsBody');
+    const statusRow = document.getElementById('statusRow');
+
+    let filtered = records.filter(r => {
+      const name = r.Name||r.name||'';
+      const stype = r.ServiceType||r.sType||'';
+      return (!fn || name.toLowerCase().includes(fn)) && (!fs || stype === fs);
+    });
+
+    statusRow.innerHTML = filtered.length === 0
+      ? (records.length === 0 ? 'no records yet' : 'no records match filter')
+      : `${filtered.length} record${filtered.length!==1?'s':''} found`;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="icon">🔧</div>No service records found</div></td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+      const name     = r.Name||r.name||'';
+      const vType    = r.VehicleType||r.vType||'';
+      const sType    = r.ServiceType||r.sType||'';
+      const sDate    = r.ServiceDate||r.sDate||'';
+      const nextDate = r.NextServiceDate||r.nextDate||'';
+      const notes      = r.Notes||r.notes||'';
+      const tech       = r.Technician||r.tech||'';
+      const curMileage = r.CurrentMileage||r.curMileage||'';
+      const nextMileage= r.NextDueMileage||r.nextMileage||'';
+      const id         = r.ID||r.id||'';
+      return `<tr>
+        <td>
+          <div class="vehicle-name">${esc(name)}</div>
+          ${vType ? `<div class="vehicle-type">${esc(vType)}</div>` : ''}
+        </td>
+        <td>
+          <div class="date-main">${esc(sDate)}</div>
+          ${nextDate ? `<div class="date-next">next: ${esc(nextDate)}</div>` : ''}
+        </td>
+        <td><span class="badge ${badgeClass(sType)}">${esc(sType)}</span></td>
+        <td>
+          ${(curMileage||nextMileage) ? `<div class="tech-label" style="margin-bottom:3px">@ ${curMileage ? esc(curMileage)+' mi' : '?'} → next: ${nextMileage ? esc(nextMileage)+' mi' : '?'}</div>` : ''}
+          <div class="notes-cell">${notes ? esc(notes) : '<span style="color:var(--text3)">—</span>'}</div>
+          ${tech ? `<div class="tech-label">tech: ${esc(tech)}</div>` : ''}
+        </td>
+        <td><button class="del-btn" onclick="deleteRecord('${id}')" title="Delete">✕</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  loadRecords();
+</script>
+</body>
+</html>
